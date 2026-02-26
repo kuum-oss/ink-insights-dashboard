@@ -1,3 +1,5 @@
+"use client";
+
 // src/app/Dashboard.tsx
 
 import { AnimatePresence, motion } from "framer-motion";
