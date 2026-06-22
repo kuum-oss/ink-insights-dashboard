@@ -2,6 +2,8 @@ import { Book } from "@/types/types";
 import { motion } from "framer-motion";
 import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 
 interface Props {
     book: Book;
@@ -114,27 +116,54 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
                         <div className="h-2 bg-gradient-to-r from-indigo-500 via-indigo-400 to-indigo-300 transition-all" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs">
-                            <div className="font-medium">⭐</div>
-                            <div className="opacity-70 text-sm">{book.totalPages ? Math.round((book.currentPage / Math.max(1, book.totalPages)) * 5) : '—'}/5</div>
-                            <div className="ml-2 text-zinc-500">{book.totalPages ? `${book.currentPage}/${book.totalPages} стр.` : '—'}</div>
+                    <div className="mt-3 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Badge variant="info" size="sm" icon="⭐">
+                                    {book.totalPages ? Math.round((book.currentPage / Math.max(1, book.totalPages)) * 5) : '—'}/5
+                                </Badge>
+                                {book.totalPages && (
+                                    <Badge variant="default" size="sm">
+                                        {book.currentPage}/{book.totalPages} стр.
+                                    </Badge>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="flex gap-2">
-                            <a href={`/reader/${book.id}`} className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-500 inline-block">Читать</a>
-                            <button onClick={async () => { if (onUpdateBook) await onUpdateBook(book.id, { progress: book.totalPages, read: true }); }} className="px-2 py-1 text-xs rounded-md bg-green-600 text-white hover:bg-green-500">Завершить</button>
-                            <button onClick={async () => {
-                                const t = window.prompt('Новое название', book.title);
-                                const a = window.prompt('Автор', book.author || '');
-                                if (t !== null || a !== null) {
-                                    const updates: any = {};
-                                    if (t !== null) updates.title = t;
-                                    if (a !== null) updates.author = a;
-                                    await onUpdateBook?.(book.id, updates);
-                                }
-                            }} className="px-2 py-1 text-xs rounded-md border hover:bg-zinc-100">Редактировать</button>
-                            <button onClick={() => setConfirmDeleteOpen(true)} className="px-2 py-1 text-xs rounded-md border text-red-600 hover:bg-red-50">Удалить</button>
+                        <div className="flex flex-wrap gap-2">
+                            <a href={`/reader/${book.id}`}>
+                                <Button variant="primary" size="sm">📖 Читать</Button>
+                            </a>
+                            <Button 
+                                variant="success" 
+                                size="sm" 
+                                onClick={async () => { if (onUpdateBook) await onUpdateBook(book.id, { progress: book.totalPages, read: true }); }}
+                            >
+                                ✓ Завершить
+                            </Button>
+                            <Button 
+                                variant="secondary" 
+                                size="sm" 
+                                onClick={async () => {
+                                    const t = window.prompt('Новое название', book.title);
+                                    const a = window.prompt('Автор', book.author || '');
+                                    if (t !== null || a !== null) {
+                                        const updates: any = {};
+                                        if (t !== null) updates.title = t;
+                                        if (a !== null) updates.author = a;
+                                        await onUpdateBook?.(book.id, updates);
+                                    }
+                                }}
+                            >
+                                ✎ Редактировать
+                            </Button>
+                            <Button 
+                                variant="danger" 
+                                size="sm" 
+                                onClick={() => setConfirmDeleteOpen(true)}
+                            >
+                                🗑️ Удалить
+                            </Button>
                         </div>
                     </div>
                     </div>
@@ -158,9 +187,9 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
                         <input type="number" value={duration} min={1} onChange={e => setDuration(Number(e.target.value))} className="mt-1 block w-full rounded-md border px-2 py-1 bg-white dark:bg-zinc-800" />
                     </label>
 
-                    <div className="flex justify-end gap-2 pt-2">
-                        <button onClick={() => setOpen(false)} className="px-3 py-1 rounded-md border hover:bg-zinc-100 dark:hover:bg-zinc-800">Отмена</button>
-                        <button onClick={submit} className="px-3 py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-500">Сохранить</button>
+                    <div className="flex justify-end gap-2 pt-4">
+                        <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Отмена</Button>
+                        <Button variant="primary" size="sm" onClick={submit}>💾 Сохранить</Button>
                     </div>
                 </div>
             </Modal>
@@ -177,14 +206,14 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
                         <textarea value={noteText} onChange={e=>setNoteText(e.target.value)} className="mt-1 block w-full rounded-md border px-2 py-1 bg-white dark:bg-zinc-800" />
                     </label>
 
-                    <div className="flex justify-between items-center gap-2 pt-2">
+                    <div className="flex justify-between items-center gap-2 pt-4">
                         <div className="flex gap-2">
-                            <button onClick={exportNotes} className="px-3 py-1 rounded-md border hover:bg-zinc-100 dark:hover:bg-zinc-800">Export</button>
+                            <Button variant="secondary" size="sm" onClick={exportNotes}>📥 Экспорт</Button>
                         </div>
 
                         <div className="flex gap-2">
-                            <button onClick={() => setOpenNotes(false)} className="px-3 py-1 rounded-md border hover:bg-zinc-100 dark:hover:bg-zinc-800">Close</button>
-                            <button onClick={submitNote} className="px-3 py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-500">Save note</button>
+                            <Button variant="ghost" size="sm" onClick={() => setOpenNotes(false)}>Закрыть</Button>
+                            <Button variant="primary" size="sm" onClick={submitNote}>💾 Сохранить</Button>
                         </div>
                     </div>
 
@@ -209,10 +238,10 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
 
             <Modal isOpen={confirmDeleteOpen} onClose={() => setConfirmDeleteOpen(false)} title={`Удалить «${book.title}»?`}>
                 <div className="space-y-3">
-                    <div>Это действие удалит книгу и все сессии/заметки, связанные с ней. Продолжить?</div>
-                    <div className="flex justify-end gap-2">
-                        <button onClick={() => setConfirmDeleteOpen(false)} className="px-3 py-1 rounded-md border">Отмена</button>
-                        <button onClick={async () => { await onDeleteBook?.(book.id); setConfirmDeleteOpen(false); }} className="px-3 py-1 rounded-md bg-red-600 text-white">Удалить</button>
+                    <div className="text-sm text-zinc-600 dark:text-zinc-400">Это действие удалит книгу и все сессии/заметки, связанные с ней. Продолжить?</div>
+                    <div className="flex justify-end gap-2 pt-4">
+                        <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteOpen(false)}>Отмена</Button>
+                        <Button variant="danger" size="sm" onClick={async () => { await onDeleteBook?.(book.id); setConfirmDeleteOpen(false); }}>🗑️ Удалить</Button>
                     </div>
                 </div>
             </Modal>

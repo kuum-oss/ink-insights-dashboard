@@ -18,17 +18,42 @@ export function AnalyticsSummary({
                                      setReadingGoal,
                                  }: Props) {
     const currentStreak = calculateStreak(sessions);
+    const avgSessionTime = calculateAvgSessionTime(sessions);
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-6 pt-6">
-            <MetricCard label="Книг за год" value={booksRead} />
-            <MetricCard label="Страниц в день" value={pagesPerDay} />
-            <MetricCard label="Текущий стрик (дни)" value={currentStreak} />
-
-            {/* Reading goal control spans full width on small screens */}
-            <div className="md:col-span-3">
-                <ReadingGoalControl booksRead={booksRead} readingGoal={readingGoal} setGoal={setReadingGoal ?? (() => {})} />
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard 
+                    label="📚 Книг за год" 
+                    value={booksRead}
+                    color="indigo"
+                    icon="📚"
+                />
+                <MetricCard 
+                    label="📖 Страниц в день" 
+                    value={pagesPerDay}
+                    color="emerald"
+                    icon="📖"
+                />
+                <MetricCard 
+                    label="🔥 Стрик (дни)" 
+                    value={currentStreak}
+                    color="rose"
+                    icon="🔥"
+                />
+                <MetricCard 
+                    label="⏱️ Среднее время сессии" 
+                    value={`${avgSessionTime} мин`}
+                    color="amber"
+                    icon="⏱️"
+                />
             </div>
+
+            <ReadingGoalControl 
+                booksRead={booksRead} 
+                readingGoal={readingGoal} 
+                setGoal={setReadingGoal ?? (() => {})} 
+            />
         </div>
     );
 }
@@ -53,4 +78,10 @@ function calculateStreak(sessions: ReadingSession[]): number {
     }
 
     return streak;
+}
+
+function calculateAvgSessionTime(sessions: ReadingSession[]): number {
+    if (sessions.length === 0) return 0;
+    const total = sessions.reduce((sum, s) => sum + (s.duration || 0), 0);
+    return Math.round(total / sessions.length);
 }
