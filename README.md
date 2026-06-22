@@ -37,7 +37,7 @@ Ink Insights — минималистичное приложение для от
 1) Клонировать и установить зависимости
 
 ```bash
-git clone <repo-url>
+gh repo clone kuum-oss/ink-insights-dashboard
 cd ink-insights-dashboard
 npm install
 ```
@@ -161,4 +161,3 @@ MIT
 
 ---
 
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
