@@ -32,6 +32,36 @@ npm run dev
 
 ---
 
+## Tech Quick Reference (для разработчиков)
+
+Требования:
+- Node.js >= 18, npm
+
+Быстрые команды:
+
+- Установка: npm install
+- Запуск dev: npm run dev
+- Сборка: npm run build
+- Запуск prod: npm run start
+- Typecheck: npx tsc --noEmit
+- Lint: npm run lint
+
+Работа с файлами и БД:
+- БД: data/books.db
+- Загруженные файлы: public/uploads
+- Создать папки: mkdir -p data public/uploads backups
+
+SQLite (локально):
+- Показать таблицы: sqlite3 data/books.db ".tables"
+- Схема books: sqlite3 data/books.db ".schema books"
+- Показать последние сессии: sqlite3 -header -column data/books.db "SELECT * FROM sessions ORDER BY date DESC LIMIT 20;"
+- Экспорт books CSV: sqlite3 -header -csv data/books.db "SELECT * FROM books;" > books.csv
+- Безопасный бэкап: sqlite3 data/books.db ".backup 'backups/books-$(date +%F).db'"
+
+Примечание: при копировании или прямом cp останавливайте dev-сервер для консистентности; используйте .backup для live-бэкапов.
+
+---
+
 ## Что внутри (кратко)
 
 - Frontend: Next.js (App Router), React + TypeScript, Tailwind CSS.
