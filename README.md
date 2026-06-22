@@ -2,17 +2,39 @@
 
 ![Next.js](https://img.shields.io/badge/Next.js-14+-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
-![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3-sky?logo=tailwind-css)
+![Tailwind](https://img.shields.io/badge/Tailwind-3-sky?logo=tailwind-css)
 
-Минималистичный дашборд для отслеживания чтения: прогресс, заметки и аналитика с интерфейсом, удобным для E-Ink ридеров.
+Краткое описание
 
-Ключевая идея — простая, но мощная панель для читателей: быстрый ввод сессий, заметки/цитаты, визуализация активности и встроенный ридер (PDF / EPUB / TXT).
+Ink Insights — минималистичное приложение для отслеживания чтения: книги, сессии, заметки и аналитика. Подходит для локальной работы и демонстрации UX (включая E‑Ink режимы). Встроенный ридер поддерживает PDF, EPUB и TXT.
+
+Содержание README
+- Быстрый старт
+- Стек
+- Команды для разработки
+- Работа с локальной БД (SQLite)
+- Ключевые API
+- Reader: возможности
+- Разработка и структура кода
+- Бэкапы и восстановление
 
 ---
 
-## Быстрый старт
+## Стек
 
-1. Клонировать и установить зависимости:
+- Next.js (App Router)
+- React + TypeScript (strict)
+- Tailwind CSS, Framer Motion
+- PDF: pdfjs-dist (canvas + текстовый слой)
+- EPUB: epub.js
+- DB: SQLite (better-sqlite3), файл `data/books.db`
+- Загрузки: `public/uploads`
+
+---
+
+## Быстрый старт (локально)
+
+1) Клонировать и установить зависимости
 
 ```bash
 git clone <repo-url>
@@ -20,185 +42,116 @@ cd ink-insights-dashboard
 npm install
 ```
 
-2. Запустить в режиме разработки:
+2) Создать папки и запустить dev сервер
 
 ```bash
+mkdir -p data public/uploads backups
 npm run dev
 ```
 
-3. Открыть: http://localhost:3000
+3) Открыть UI: http://localhost:3000
 
-Совет: на главной есть кнопка "Demo mode" для быстрого наполнения примерными книгами и сессиями.
-
----
-
-## Tech Quick Reference (для разработчиков)
-
-Требования:
-- Node.js >= 18, npm
-
-Быстрые команды:
-
-- Установка: npm install
-- Запуск dev: npm run dev
-- Сборка: npm run build
-- Запуск prod: npm run start
-- Typecheck: npx tsc --noEmit
-- Lint: npm run lint
-
-Работа с файлами и БД:
-- БД: data/books.db
-- Загруженные файлы: public/uploads
-- Создать папки: mkdir -p data public/uploads backups
-
-SQLite (локально):
-- Показать таблицы: sqlite3 data/books.db ".tables"
-- Схема books: sqlite3 data/books.db ".schema books"
-- Показать последние сессии: sqlite3 -header -column data/books.db "SELECT * FROM sessions ORDER BY date DESC LIMIT 20;"
-- Экспорт books CSV: sqlite3 -header -csv data/books.db "SELECT * FROM books;" > books.csv
-- Безопасный бэкап: sqlite3 data/books.db ".backup 'backups/books-$(date +%F).db'"
-
-Примечание: при копировании или прямом cp останавливайте dev-сервер для консистентности; используйте .backup для live-бэкапов.
+Нажмите "Demo mode" для моментального наполнения тестовыми данными.
 
 ---
 
-## Что внутри (кратко)
+## Команды
 
-- Frontend: Next.js (App Router), React + TypeScript, Tailwind CSS.
-- Backend: простой SQLite (better-sqlite3) через server-side API (Next.js route handlers).
-- Хук `useLibrary` — бизнес-логика: загрузка книг, сессий, заметок, рекомендации, прогнозы.
-- Reader: интеграция pdfjs (pdfjs-dist) и epub.js, текстовый reader для .txt.
+- npm run dev — запуск в режиме разработки
+- npm run build — сборка
+- npm run start — запуск собранного приложения
+- npx tsc --noEmit — TypeScript check
+- npm run lint — линтинг
 
 ---
 
-## Фичи (основные)
+## Локальная БД (SQLite)
 
-- Карточки книг: обложка, прогресс-бар, % прочитано, оставшиеся страницы, кнопки Читать / Завершить / Редактировать / Удалить.
-- Reading sessions: добавление сессий (дата, страницы, длительность) и накопление статистики.
-- Reader: PDF (canvas + текстовый слой, поиск и подсветка), EPUB (epub.js), TXT (текст + разбиение по страницам).
-- Heatmap активности, графики страниц по дням, рекомендации и уведомления.
-- Demo mode для демонстрации возможностей.
+Файл базы: `data/books.db`.
+
+Основные SQL‑команды:
+
+```bash
+# Список таблиц
+sqlite3 data/books.db ".tables"
+
+# Схема таблицы books
+sqlite3 data/books.db ".schema books"
+
+# Просмотреть последние 20 сессий
+sqlite3 -header -column data/books.db "SELECT * FROM sessions ORDER BY date DESC LIMIT 20;"
+
+# Экспорт books в CSV
+sqlite3 -header -csv data/books.db "SELECT * FROM books;" > books.csv
+```
+
+Бэкап и восстановление:
+
+```bash
+# безопасный бэкап (работает при запущенном сервере)
+sqlite3 data/books.db ".backup 'backups/books-$(date +%F).db'"
+
+# копирование (остановите сервер для консистентности)
+mkdir -p backups && cp data/books.db backups/books-$(date +%F).db
+
+# дамп SQL
+sqlite3 data/books.db .dump > dump.sql
+
+# восстановление
+sqlite3 data/books.db < dump.sql
+```
+
+Рекомендуется использовать `.backup` для live‑бэкапов и GUI (DB Browser) для инспекции.
 
 ---
 
 ## API (кратко)
 
-- GET /api/books — список книг
-- POST /api/books — создать книгу (title, author, totalPages, coverUrl, contentUrl)
-- GET /api/books/:id — получить книгу
-- PUT /api/books/:id — обновить (title, author, progress, read, ...)
-- DELETE /api/books/:id — удалить
-- GET /api/sessions — список сессий
-- POST /api/sessions — добавить сессию (bookId, date, pagesRead, duration)
-- GET /api/notes — список заметок
-- POST /api/notes — добавить заметку (bookId, date, text, quote)
-- POST /api/books/upload — загрузка файлов (обложка / PDF / EPUB / TXT) -> сохраняются в public/uploads и возвращают url
+- GET /api/books
+- POST /api/books { title, author, totalPages, coverUrl?, contentUrl? }
+- GET /api/books/:id
+- PUT /api/books/:id { progress?, read?, ... }
+- DELETE /api/books/:id
+- GET /api/sessions
+- POST /api/sessions { bookId, date, pagesRead, duration }
+- GET /api/notes
+- POST /api/notes { bookId, date, text, quote }
+- POST /api/books/upload — загрузка файлов (возвращает url в public/uploads)
 
 ---
 
-## Reader (коротко)
+## Reader (возможности)
 
-- PDF: рендер через pdfjs, canvas + текстовый слой для точного выделения и поиска. Наличие подсветки совпадений и навигации по найденным результатам.
-- EPUB: встраивается через epub.js (prev/next, рендер в контейнер).
-- TXT: загружается полностью и делится на виртуальные «страницы» для удобства перелистывания.
-
----
-
-## Разработка и тестирование
-
-- Код бизнес-логики — в `src/hooks/useLibrary.ts`.
-- UI: `src/components/books/BookCard.tsx`, `ProgressGrid.tsx`.
-- Reader: `src/components/reader/PdfReader.tsx`, `EpubReader.tsx`.
-
-Рекомендации при локальной разработке:
-- Убедитесь, что `data/` и `public/uploads` доступны для записи (DB и загруженные файлы).
-- Если TypeScript жалуется на нативные модули (better-sqlite3, pdfjs-dist), можно добавить простые декларации (`declare module '...'`) в `src/types`.
-
-### Локальная база данных (SQLite)
-
-Приложение использует SQLite (better-sqlite3). Файл БД:
-
-```
-data/books.db
-```
-
-Полезные команды для работы с локальной БД:
-
-- Показать таблицы:
-
-```bash
-sqlite3 data/books.db ".tables"
-```
-
-- Показать схему таблицы books:
-
-```bash
-sqlite3 data/books.db ".schema books"
-```
-
-- Просмотреть последние 20 сессий в человекочитаемом виде:
-
-```bash
-sqlite3 -header -column data/books.db "SELECT * FROM sessions ORDER BY date DESC LIMIT 20;"
-```
-
-- Экспорт таблицы в CSV:
-
-```bash
-sqlite3 -header -csv data/books.db "SELECT * FROM books;" > books.csv
-```
-
-Бэкап и восстановление
-
-- Безопасный бэкап (работает даже если сервер запущен):
-
-```bash
-sqlite3 data/books.db ".backup 'backups/books-$(date +%F).db'"
-```
-
-- Простое копирование (остановите dev-сервер перед копированием для консистентности):
-
-```bash
-mkdir -p backups && cp data/books.db backups/books-$(date +%F).db
-```
-
-- Экспорт в SQL-дамп:
-
-```bash
-sqlite3 data/books.db .dump > dump.sql
-```
-
-- Восстановление из дампа:
-
-```bash
-sqlite3 data/books.db < dump.sql
-```
-
-GUI и инструменты
-
-- DB Browser for SQLite (recommended) — удобно смотреть и править `data/books.db`.
-  macOS: `brew install --cask db-browser-for-sqlite`.
-
-Советы
-
-- При регулярной разработке используйте `.backup` для бэкапов, чтобы не прерывать dev-сервер.
-- Проверьте права на файл: `ls -lh data/books.db`.
-- Для регулярных бэкапов можно добавить npm-скрипт или cron-задание (в README показано, как вручную).
+- PDF: canvas рендер + текстовый слой, поиск, подсветка, навигация и зум.
+- EPUB: чтение через epub.js (prev/next), возможность расширения (TOC, закладки).
+- TXT: разделение на виртуальные страницы, удобное перелистывание.
 
 ---
 
-## Что можно улучшить дальше
+## Структура кода (важные файлы)
 
-- Автосохранение позиции чтения (cfi / page) и восстановление при повторном открытии.
-- Улучшения PDF: текстовый слой с поиском в WebWorker, thumbnails, аннотации.
-- Заметки / highlights напрямую в Reader (epub.js annotations).
-- Экспорт/импорт данных (JSON/PDF/CSV), OCR-поддержка для изображений.
+- src/hooks/useLibrary.ts — бизнес-логика
+- src/components/books/BookCard.tsx — UI карточки книги
+- src/components/books/ProgressGrid.tsx — сетка карточек
+- src/components/reader/PdfReader.tsx — PDF reader (pdfjs)
+- src/components/reader/EpubReader.tsx — EPUB reader (epub.js)
+- src/app/api/* — серверные route handlers (API)
 
 ---
 
-## Вклад и коммиты
+## Дев‑советы
 
-Если хотите помочь, создавайте PR с маленькими, целенаправленными патчами. Перед мерджем проверяйте локально `npm run dev` и делайте минимальные тесты функциональности.
+- Убедитесь, что `data/` и `public/uploads` доступны для записи.
+- Для нативных типов (better‑sqlite3, pdfjs) можно добавить простые d.ts в `src/types`.
+- Используйте .backup для бэкапов при работающем сервере.
+
+---
+
+## Дальнейшие улучшения
+
+- Сохранение позиции чтения (page / CFI) и восстановление
+- Поиск PDF в WebWorker, thumbnails, аннотации и highlights
+- Экспорт/импорт данных (JSON / CSV)
 
 ---
 
@@ -207,3 +160,5 @@ GUI и инструменты
 MIT
 
 ---
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
