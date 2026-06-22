@@ -69,8 +69,23 @@ export function useLibrary() {
         }
     }, [readingGoal, notes]);
 
-    // improved recommendations: combine multiple signals
+    // improved recommendations: combine multiple signals and read UI weights (clean-architecture: settings are externalized)
+    const getRecSettings = () => {
+        try {
+            const raw = localStorage.getItem('recSettings');
+            if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return { wGenre: 1.2, wProgress: 1.0, wRecency: 0.8, wSpeed: 0.6, abGroup: 'control' };
+    };
+
     const recommendBooks = (count = 5) => {
+        const settings = getRecSettings();
+        const wGenre = Number(settings.wGenre ?? 1.2);
+        const wProgress = Number(settings.wProgress ?? 1.0);
+        const wRecency = Number(settings.wRecency ?? 0.8);
+        const wSpeed = Number(settings.wSpeed ?? 0.6);
+        const ab = settings.abGroup ?? 'control';
+
         // helper: days since last session for a book
         const lastSessionByBook: Record<string, string | null> = {};
         sessions.forEach(s => {
@@ -99,20 +114,18 @@ export function useLibrary() {
             }
             const recencyScore = Math.max(0, 1 - Math.min(daysSince, 30) / 30); // 1 for today, 0 for 30+ days
 
-            // combine features with weights
-            const wGenre = 1.2;
-            const wProgress = 1.0;
-            const wRecency = 0.8;
-            const wSpeed = 0.6; // favors books that can be finished quickly
-
             // normalize estMinutes to [0,1] by mapping (0..max)->(1..0)
             const maxMinutes = 60 * 10; // 10 hours threshold
             const speedScore = isFinite(estMinutes) ? Math.max(0, 1 - Math.min(estMinutes, maxMinutes) / maxMinutes) : 0;
 
+            // combine features with weights from settings
             const raw = wGenre * genreScore + wProgress * progressRatio + wRecency * recencyScore + wSpeed * speedScore;
 
+            // small A/B variant tweak: if variant, slightly favor short books
+            const abBoost = ab === 'variant' && b.totalPages < 300 ? 0.15 : 0;
+
             // scale to 0..100
-            const score = Math.round(raw * 100);
+            const score = Math.round((raw + abBoost) * 100);
 
             return { book: b, remaining, estMinutes, score };
         });
