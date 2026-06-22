@@ -54,9 +54,11 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
                 tabIndex={0}
                 className="relative rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
+                {/* cover with fallback */}
                 <img
-                    src={book.coverUrl}
+                    src={book.coverUrl || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="320"><rect width="100%" height="100%" fill="%23e6e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23808" font-size="20">No Cover</text></svg>'}
                     alt={book.title}
+                    onError={(e:any)=>{ e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="320"><rect width="100%" height="100%" fill="%23e6e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23808" font-size="20">No Cover</text></svg>'; }}
                     className="aspect-[3/4] w-full object-cover"
                 />
 
