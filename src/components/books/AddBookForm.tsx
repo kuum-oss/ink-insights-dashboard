@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-type Props = { addBook: (p: { title: string; author?: string; description?: string; totalPages?: number; coverUrl?: string }) => Promise<any> };
+type Props = { addBook: (p: { title: string; author?: string; description?: string; totalPages?: number; coverUrl?: string; contentUrl?: string }) => Promise<any> };
 
 export default function AddBookForm({ addBook }: Props) {
     const [title, setTitle] = useState('');
@@ -10,13 +10,14 @@ export default function AddBookForm({ addBook }: Props) {
     const [description, setDescription] = useState('');
     const [totalPages, setTotalPages] = useState<number | ''>('');
     const [file, setFile] = useState<File | null>(null);
+    const [contentFile, setContentFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const uploadFile = async (): Promise<string | undefined> => {
-        if (!file) return undefined;
+    const uploadFile = async (f?: File): Promise<string | undefined> => {
+        if (!f) return undefined;
         const fd = new FormData();
-        fd.append('file', file);
+        fd.append('file', f);
         const res = await fetch('/api/books/upload', { method: 'POST', body: fd });
         if (!res.ok) throw new Error('Upload failed');
         const data = await res.json();
@@ -29,9 +30,10 @@ export default function AddBookForm({ addBook }: Props) {
         if (!title.trim()) { setError('Title is required'); return; }
         setLoading(true);
         try {
-            const coverUrl = await uploadFile();
-            await addBook({ title: title.trim(), author: author.trim() || undefined, description: description.trim() || undefined, totalPages: typeof totalPages === 'number' && totalPages > 0 ? totalPages : undefined, coverUrl });
-            setTitle(''); setAuthor(''); setDescription(''); setTotalPages(''); setFile(null);
+            const coverUrl = await uploadFile(file || undefined);
+            const contentUrl = await uploadFile(contentFile || undefined);
+            await addBook({ title: title.trim(), author: author.trim() || undefined, description: description.trim() || undefined, totalPages: typeof totalPages === 'number' && totalPages > 0 ? totalPages : undefined, coverUrl, contentUrl });
+            setTitle(''); setAuthor(''); setDescription(''); setTotalPages(''); setFile(null); setContentFile(null);
         } catch (err: any) {
             setError(err?.message || 'Failed to add book');
         } finally { setLoading(false); }
@@ -59,10 +61,14 @@ export default function AddBookForm({ addBook }: Props) {
                         )}
                     </div>
 
-                    <div>
+                    <div className="flex flex-col items-center gap-2">
                         <label className="inline-block px-3 py-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent cursor-pointer text-sm">
                             Выбрать обложку
                             <input type="file" accept="image/*" className="sr-only" onChange={e=>setFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)} />
+                        </label>
+                        <label className="inline-block px-3 py-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent cursor-pointer text-sm">
+                            Загрузить контент (PDF или TXT)
+                            <input type="file" accept="application/pdf,text/plain" className="sr-only" onChange={e=>setContentFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)} />
                         </label>
                     </div>
                 </div>

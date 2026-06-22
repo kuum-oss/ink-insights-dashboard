@@ -36,11 +36,11 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { title, author, description, coverUrl, totalPages } = body;
+    const { title, author, description, coverUrl, totalPages, contentUrl } = body;
     if (!title) return new Response(JSON.stringify({ error: 'title is required' }), { status: 400 });
 
-    const stmt = db.prepare('INSERT INTO books (title, author, description, coverUrl, totalPages) VALUES (?, ?, ?, ?, ?)');
-    const info = stmt.run(title, author ?? null, description ?? null, coverUrl ?? null, totalPages ?? 0);
+    const stmt = db.prepare('INSERT INTO books (title, author, description, coverUrl, totalPages, contentUrl) VALUES (?, ?, ?, ?, ?, ?)');
+    const info = stmt.run(title, author ?? null, description ?? null, coverUrl ?? null, totalPages ?? 0, contentUrl ?? null);
     const book = db.prepare('SELECT * FROM books WHERE id = ?').get(info.lastInsertRowid);
     return new Response(JSON.stringify(book), { status: 201, headers: { 'Content-Type': 'application/json' } });
   } catch (err: any) {

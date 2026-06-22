@@ -30,6 +30,9 @@ try {
   if (!cols.find((c: any) => c.name === 'totalPages')) {
     db.exec("ALTER TABLE books ADD COLUMN totalPages INTEGER DEFAULT 0;");
   }
+  if (!cols.find((c: any) => c.name === 'contentUrl')) {
+    db.exec("ALTER TABLE books ADD COLUMN contentUrl TEXT;");
+  }
 
   // create sessions table to persist reading sessions
   db.exec(`

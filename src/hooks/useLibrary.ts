@@ -9,6 +9,7 @@ function mapServerBook(b: any): Book {
         title: b.title || '',
         author: b.author || '',
         coverUrl: b.coverUrl || '',
+        contentUrl: b.contentUrl || undefined,
         totalPages: b.totalPages ?? (b.progress ? b.progress : 0),
         currentPage: b.progress ?? 0,
         genre: b.genre || '',
