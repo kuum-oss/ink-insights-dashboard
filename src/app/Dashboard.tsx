@@ -11,6 +11,7 @@ import { PagesPerDayChart } from "@/components/analytics/PagesPerDayChart";
 import { Recommendations } from "@/components/analytics/Recommendations";
 import { Notifications } from "@/components/Notifications";
 import { useTheme } from "@/theme/ThemeProvider";
+import AddBookForm from "@/components/books/AddBookForm";
 
 
 export default function Dashboard() {
@@ -27,6 +28,7 @@ export default function Dashboard() {
         favoriteGenres,
         recommendBooks,
         getPriorityNotifications,
+        addBook,
     } = useLibrary();
 
     const [view, setView] = useState<"active" | "finished">("active");
@@ -57,6 +59,8 @@ export default function Dashboard() {
             <PagesPerDayChart sessions={sessions} />
 
             <div className="px-6 py-4">
+                <AddBookForm addBook={addBook} />
+
                 <button
                     onClick={() => setView(v => (v === "active" ? "finished" : "active"))}
                     aria-pressed={view === "finished"}

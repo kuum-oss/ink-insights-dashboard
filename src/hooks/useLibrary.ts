@@ -3,6 +3,18 @@
 import { useMemo, useState, useEffect } from "react";
 import { Book, ReadingSession, Note } from "@/types/types";
 
+function mapServerBook(b: any): Book {
+    return {
+        id: String(b.id),
+        title: b.title || '',
+        author: b.author || '',
+        coverUrl: b.coverUrl || '',
+        totalPages: b.totalPages ?? (b.progress ? b.progress : 0),
+        currentPage: b.progress ?? 0,
+        genre: b.genre || '',
+    };
+}
+
 export function useLibrary() {
     const [books, setBooks] = useState<Book[]>([]);
     const [sessions, setSessions] = useState<ReadingSession[]>([]);
@@ -23,6 +35,24 @@ export function useLibrary() {
             return {};
         }
     });
+
+    // load books from API on mount
+    useEffect(() => {
+        let mounted = true;
+        async function load() {
+            try {
+                const res = await fetch('/api/books');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!mounted) return;
+                setBooks(data.map(mapServerBook));
+            } catch (e) {
+                // ignore
+            }
+        }
+        load();
+        return () => { mounted = false; };
+    }, []);
 
     const activeBooks = useMemo(
         () => books.filter(b => b.currentPage < b.totalPages),
@@ -69,7 +99,6 @@ export function useLibrary() {
         }
     }, [readingGoal, notes]);
 
-    // improved recommendations: combine multiple signals and read UI weights (clean-architecture: settings are externalized)
     const getRecSettings = () => {
         try {
             const raw = localStorage.getItem('recSettings');
@@ -86,23 +115,17 @@ export function useLibrary() {
         const wSpeed = Number(settings.wSpeed ?? 0.6);
         const ab = settings.abGroup ?? 'control';
 
-        // helper: days since last session for a book
         const lastSessionByBook: Record<string, string | null> = {};
         sessions.forEach(s => {
             const prev = lastSessionByBook[s.bookId];
             if (!prev || s.date > prev) lastSessionByBook[s.bookId] = s.date;
         });
 
-        // compute raw scores
         const scored = books.map(b => {
             const remaining = Math.max(0, b.totalPages - b.currentPage);
-            const progressRatio = b.totalPages > 0 ? 1 - remaining / b.totalPages : 0; // closer to 1 means nearly finished
-
+            const progressRatio = b.totalPages > 0 ? 1 - remaining / b.totalPages : 0;
             const estMinutes = avgPagesPerMinute > 0 ? remaining / avgPagesPerMinute : Infinity;
-
             const genreScore = favoriteGenres.includes(b.genre) ? 1 : 0;
-
-            // recency: if there was a recent session, boost (days since last session)
             const last = lastSessionByBook[b.id];
             let daysSince = 9999;
             if (last) {
@@ -112,28 +135,18 @@ export function useLibrary() {
             } else {
                 daysSince = 999;
             }
-            const recencyScore = Math.max(0, 1 - Math.min(daysSince, 30) / 30); // 1 for today, 0 for 30+ days
-
-            // normalize estMinutes to [0,1] by mapping (0..max)->(1..0)
-            const maxMinutes = 60 * 10; // 10 hours threshold
+            const recencyScore = Math.max(0, 1 - Math.min(daysSince, 30) / 30);
+            const maxMinutes = 60 * 10;
             const speedScore = isFinite(estMinutes) ? Math.max(0, 1 - Math.min(estMinutes, maxMinutes) / maxMinutes) : 0;
-
-            // combine features with weights from settings
             const raw = wGenre * genreScore + wProgress * progressRatio + wRecency * recencyScore + wSpeed * speedScore;
-
-            // small A/B variant tweak: if variant, slightly favor short books
             const abBoost = ab === 'variant' && b.totalPages < 300 ? 0.15 : 0;
-
-            // scale to 0..100
             const score = Math.round((raw + abBoost) * 100);
-
             return { book: b, remaining, estMinutes, score };
         });
 
         return scored.sort((a, b) => b.score - a.score).slice(0, count);
     };
 
-    // Notifications: return books with high priority score
     const getPriorityNotifications = (minScore = 60, count = 3) => {
         const recs = recommendBooks(20);
         return recs.filter(r => r.score >= minScore).slice(0, count);
@@ -183,6 +196,35 @@ export function useLibrary() {
         URL.revokeObjectURL(url);
     };
 
+    // new: addBook / updateBook / deleteBook (call API and update state)
+    const addBook = async (payload: { title: string; author?: string; description?: string; totalPages?: number }) => {
+        const res = await fetch('/api/books', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Failed to add book');
+        const data = await res.json();
+        const mapped = mapServerBook(data);
+        setBooks(prev => [mapped, ...prev]);
+        return mapped;
+    };
+
+    const updateBook = async (id: string, updates: Partial<{ title: string; author: string; description: string; read: boolean; progress: number; }>) => {
+        const res = await fetch(`/api/books/${id}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates),
+        });
+        if (!res.ok) throw new Error('Failed to update book');
+        const data = await res.json();
+        const mapped = mapServerBook(data);
+        setBooks(prev => prev.map(b => b.id === id ? mapped : b));
+        return mapped;
+    };
+
+    const deleteBook = async (id: string) => {
+        const res = await fetch(`/api/books/${id}`, { method: 'DELETE' });
+        if (res.status !== 204) throw new Error('Failed to delete');
+        setBooks(prev => prev.filter(b => b.id !== id));
+    };
+
     const setReadingGoalBooksPerYear = (n?: number) => {
         setReadingGoal(prev => ({ ...prev, booksPerYear: n }));
     };
@@ -206,5 +248,9 @@ export function useLibrary() {
         addNote,
         getNotesByBook,
         exportNotesCSV,
+        // new
+        addBook,
+        updateBook,
+        deleteBook,
     };
 }
