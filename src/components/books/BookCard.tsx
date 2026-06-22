@@ -1,6 +1,6 @@
 import { Book } from "@/types/types";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 
 interface Props {
@@ -9,11 +9,13 @@ interface Props {
     onAddNote?: (note: Omit<import("@/types/types").Note, 'id' | 'date'>) => void;
     getNotesByBook?: (bookId: string) => import("@/types/types").Note[];
     exportNotes?: () => void;
+    estimatedFinishDate?: (b: Book) => string | null;
+    getFirstSessionDate?: (bookId: string) => string | null;
     onUpdateBook?: (id: string, updates: Partial<{ title: string; author: string; description: string; read: boolean; progress: number; }>) => Promise<any> | void;
     onDeleteBook?: (id: string) => Promise<any> | void;
 }
 
-export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, exportNotes, onUpdateBook, onDeleteBook }: Props) {
+export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, exportNotes, estimatedFinishDate, getFirstSessionDate, onUpdateBook, onDeleteBook }: Props) {
     const progress = Math.round(
         (book.currentPage / Math.max(1, book.totalPages)) * 100
     );
@@ -23,6 +25,9 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
     const [pages, setPages] = useState(10);
     const [duration, setDuration] = useState(20);
     const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+
+    const [displayedProgress, setDisplayedProgress] = useState(progress);
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
     const [noteText, setNoteText] = useState('');
     const [quote, setQuote] = useState('');
@@ -47,6 +52,24 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
     }
 
     const notes = getNotesByBook ? getNotesByBook(book.id) : [];
+
+    // animate numeric progress
+    useEffect(() => {
+        let raf: number | null = null;
+        const start = Date.now();
+        const from = displayedProgress;
+        const to = progress;
+        const durationMs = 600;
+        function step() {
+            const t = Math.min(1, (Date.now() - start) / durationMs);
+            const v = Math.round(from + (to - from) * t);
+            setDisplayedProgress(v);
+            if (t < 1) raf = requestAnimationFrame(step);
+            else raf = null;
+        }
+        if (from !== to) raf = requestAnimationFrame(step);
+        return () => { if (raf) cancelAnimationFrame(raf); };
+    }, [progress]);
 
     return (
         <>
@@ -80,9 +103,10 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
                         <div className="min-w-0">
                             <div className="text-sm font-semibold truncate">{book.title}</div>
                             <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{book.author || '—'}</div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{Math.max(0, (book.totalPages || 0) - (book.currentPage || 0))} стр. · жанр: {book.genre || '—'}</div>
-                    </div>
-                    <div className="ml-3 text-xs text-zinc-600 dark:text-zinc-300">{progress}%</div>
+                            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{Math.max(0, (book.totalPages || 0) - (book.currentPage || 0))} стр. · жанр: {book.genre || '—'}</div>
+                            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Начато: {typeof getFirstSessionDate === 'function' ? (getFirstSessionDate(book.id) ?? '—') : '—'} · Окончание: {typeof estimatedFinishDate === 'function' ? (estimatedFinishDate(book) ?? '—') : '—'}</div>
+                        </div>
+                        <div className="ml-3 text-xs text-zinc-600 dark:text-zinc-300">{displayedProgress}%</div>
                     </div>
 
                     <div className="mt-3">
@@ -110,7 +134,7 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
                                     await onUpdateBook?.(book.id, updates);
                                 }
                             }} className="px-2 py-1 text-xs rounded-md border hover:bg-zinc-100">Редактировать</button>
-                            <button onClick={async () => { if (!confirm('Удалить книгу?')) return; await onDeleteBook?.(book.id); }} className="px-2 py-1 text-xs rounded-md border text-red-600 hover:bg-red-50">Удалить</button>
+                            <button onClick={() => setConfirmDeleteOpen(true)} className="px-2 py-1 text-xs rounded-md border text-red-600 hover:bg-red-50">Удалить</button>
                         </div>
                     </div>
                     </div>
@@ -179,6 +203,16 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
                                 ))
                             )}
                         </div>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal isOpen={confirmDeleteOpen} onClose={() => setConfirmDeleteOpen(false)} title={`Удалить «${book.title}»?`}>
+                <div className="space-y-3">
+                    <div>Это действие удалит книгу и все сессии/заметки, связанные с ней. Продолжить?</div>
+                    <div className="flex justify-end gap-2">
+                        <button onClick={() => setConfirmDeleteOpen(false)} className="px-3 py-1 rounded-md border">Отмена</button>
+                        <button onClick={async () => { await onDeleteBook?.(book.id); setConfirmDeleteOpen(false); }} className="px-3 py-1 rounded-md bg-red-600 text-white">Удалить</button>
                     </div>
                 </div>
             </Modal>

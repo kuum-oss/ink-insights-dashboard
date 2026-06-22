@@ -174,6 +174,12 @@ export function useLibrary() {
         return finish.toISOString().split("T")[0];
     };
 
+    const getFirstSessionDate = (bookId: string): string | null => {
+        const bookSessions = sessions.filter(s => s.bookId === bookId).sort((a,b)=>a.date.localeCompare(b.date));
+        if (bookSessions.length === 0) return null;
+        return bookSessions[0].date.split('T')[0];
+    };
+
     const addSession = async (session: ReadingSession) => {
         try {
             const res = await fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(session) });
@@ -292,6 +298,7 @@ export function useLibrary() {
         sessions,
         averagePagesPerDay,
         estimatedFinishDate,
+        getFirstSessionDate,
         addSession,
         readingGoal,
         setReadingGoalBooksPerYear,

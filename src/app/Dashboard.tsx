@@ -29,9 +29,11 @@ export default function Dashboard() {
         recommendBooks,
         getPriorityNotifications,
         addBook,
-    updateBook,
-    deleteBook,
-    seedDemo,
+        updateBook,
+        deleteBook,
+        seedDemo,
+        estimatedFinishDate,
+        getFirstSessionDate,
     } = useLibrary();
 
     const [view, setView] = useState<"active" | "finished">("active");
@@ -98,7 +100,7 @@ export default function Dashboard() {
                                     exit={{ opacity: 0, y: -8 }}
                                     transition={{ duration: 0.25 }}
                                 >
-                                    <ProgressGrid books={view === "active" ? activeBooks : finishedBooks} onAddSession={addSession} onAddNote={addNote} getNotesByBook={getNotesByBook} exportNotes={exportNotesCSV} onUpdateBook={updateBook} onDeleteBook={deleteBook} />
+                                    <ProgressGrid books={view === "active" ? activeBooks : finishedBooks} onAddSession={addSession} onAddNote={addNote} getNotesByBook={getNotesByBook} exportNotes={exportNotesCSV} estimatedFinishDate={estimatedFinishDate} getFirstSessionDate={getFirstSessionDate} onUpdateBook={updateBook} onDeleteBook={deleteBook} />
                                 </motion.div>
                             </AnimatePresence>
                         </div>
