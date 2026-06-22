@@ -8,6 +8,7 @@ import { AnalyticsSummary } from "@/components/analytics/AnalyticsSummary";
 import { ProgressGrid } from "@/components/books/ProgressGrid";
 import { ReadingHeatmap } from "@/components/heatmap/ReadingHeatmap";
 import { PagesPerDayChart } from "@/components/analytics/PagesPerDayChart";
+import { Recommendations } from "@/components/analytics/Recommendations";
 import { useTheme } from "@/theme/ThemeProvider";
 
 
@@ -18,8 +19,6 @@ export default function Dashboard() {
         sessions,
         averagePagesPerDay,
         addSession,
-        readingGoal,
-        setReadingGoalBooksPerYear,
     } = useLibrary();
 
     const [view, setView] = useState<"active" | "finished">("active");
@@ -45,8 +44,6 @@ export default function Dashboard() {
                 booksRead={finishedBooks.length}
                 pagesPerDay={averagePagesPerDay}
                 sessions={sessions}
-                readingGoal={readingGoal}
-                setReadingGoal={setReadingGoalBooksPerYear}
             />
 
             <PagesPerDayChart sessions={sessions} />
@@ -76,13 +73,14 @@ export default function Dashboard() {
             <div className="px-6">
                 <div className="mt-4 mb-2 text-sm font-semibold">Рекомендации и прогнозы</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {activeBooks.slice(0,4).map(b => (
-                        <div key={b.id} className="rounded-md p-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-                            <div className="font-semibold">{b.title}</div>
-                            <div className="text-xs opacity-70">Осталось: {b.totalPages - b.currentPage} стр.</div>
-                            <div className="text-xs mt-1">Прогноз завершения: {estimatedFinishDate(b) ?? '—'}</div>
+                    <Recommendations recommendations={recommendBooks(4)} />
+                    <div className="rounded-md p-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                        <div className="font-semibold">Быстрая статистика</div>
+                        <div className="mt-2 text-sm">
+                            <div>Средняя скорость: {avgPagesPerMinute > 0 ? avgPagesPerMinute.toFixed(2) : '—'} стр/мин</div>
+                            <div>Любимые жанры: {favoriteGenres.slice(0,3).join(', ') || '—'}</div>
                         </div>
-                    ))}
+                    </div>
                 </div>
             </div>
 

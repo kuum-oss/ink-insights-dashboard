@@ -1,6 +1,6 @@
 // src/hooks/useLibrary.ts
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Book, ReadingSession } from "@/types/types";
 
 export function useLibrary() {
@@ -34,6 +34,23 @@ export function useLibrary() {
     // books read count
     const booksRead = useMemo(() => finishedBooks.length, [finishedBooks]);
 
+    // reading speed: pages per minute
+    const avgPagesPerMinute = useMemo(() => {
+        const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration || 0), 0);
+        if (totalMinutes === 0) return 0;
+        return totalPagesRead / totalMinutes;
+    }, [sessions, totalPagesRead]);
+
+    // favorite genres (simple frequency)
+    const favoriteGenres = useMemo(() => {
+        const freq: Record<string, number> = {};
+        books.forEach(b => {
+            if (!b.genre) return;
+            freq[b.genre] = (freq[b.genre] || 0) + 1;
+        });
+        return Object.entries(freq).sort((a, b) => b[1] - a[1]).map(([g]) => g);
+    }, [books]);
+
     // persist readingGoal
     useEffect(() => {
         try {
@@ -42,6 +59,18 @@ export function useLibrary() {
             // ignore
         }
     }, [readingGoal]);
+
+    // recommend books: score by (genre match + short remaining time)
+    const recommendBooks = (count = 5) => {
+        const scored = books.map(b => {
+            const remaining = Math.max(0, b.totalPages - b.currentPage);
+            const estMinutes = avgPagesPerMinute > 0 ? Math.ceil(remaining / avgPagesPerMinute) : Infinity;
+            const genreScore = favoriteGenres.includes(b.genre) ? 1 : 0;
+            const score = genreScore * 1000 - estMinutes; // higher better
+            return { book: b, remaining, estMinutes, score };
+        });
+        return scored.sort((a, b) => b.score - a.score).slice(0, count);
+    };
 
     const averagePagesPerDay = useMemo(() => {
         if (sessions.length === 0) return 0;
@@ -84,5 +113,8 @@ export function useLibrary() {
         readingGoal,
         setReadingGoalBooksPerYear,
         booksRead,
+        avgPagesPerMinute,
+        favoriteGenres,
+        recommendBooks,
     };
 }
