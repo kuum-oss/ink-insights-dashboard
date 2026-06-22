@@ -16,3 +16,11 @@ export interface ReadingSession {
     pagesRead: number;
     duration: number; // minutes
 }
+
+export interface Note {
+    id: string;
+    bookId: string;
+    date: string; // ISO
+    text: string;
+    quote?: string;
+}

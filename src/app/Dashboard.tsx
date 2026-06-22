@@ -65,7 +65,7 @@ export default function Dashboard() {
                         exit={{ opacity: 0, y: -8 }}
                         transition={{ duration: 0.25 }}
                     >
-                        <ProgressGrid books={view === "active" ? activeBooks : finishedBooks} onAddSession={addSession} />
+                        <ProgressGrid books={view === "active" ? activeBooks : finishedBooks} onAddSession={addSession} onAddNote={addNote} getNotesByBook={getNotesByBook} exportNotes={exportNotesCSV} />
                     </motion.div>
                 </AnimatePresence>
             </div>

@@ -1,11 +1,19 @@
 // src/hooks/useLibrary.ts
 
 import { useMemo, useState, useEffect } from "react";
-import { Book, ReadingSession } from "@/types/types";
+import { Book, ReadingSession, Note } from "@/types/types";
 
 export function useLibrary() {
     const [books, setBooks] = useState<Book[]>([]);
     const [sessions, setSessions] = useState<ReadingSession[]>([]);
+    const [notes, setNotes] = useState<Note[]>(() => {
+        try {
+            const raw = localStorage.getItem('notes');
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            return [];
+        }
+    });
 
     const [readingGoal, setReadingGoal] = useState<{ booksPerYear?: number }>(() => {
         try {
@@ -51,14 +59,15 @@ export function useLibrary() {
         return Object.entries(freq).sort((a, b) => b[1] - a[1]).map(([g]) => g);
     }, [books]);
 
-    // persist readingGoal
+    // persist readingGoal & notes
     useEffect(() => {
         try {
             localStorage.setItem('readingGoal', JSON.stringify(readingGoal));
+            localStorage.setItem('notes', JSON.stringify(notes));
         } catch (e) {
             // ignore
         }
-    }, [readingGoal]);
+    }, [readingGoal, notes]);
 
     // recommend books: score by (genre match + short remaining time)
     const recommendBooks = (count = 5) => {
@@ -98,6 +107,24 @@ export function useLibrary() {
         );
     };
 
+    const addNote = (note: Omit<Note, 'id' | 'date'>) => {
+        const n = { id: String(Date.now()), date: new Date().toISOString(), ...note } as Note;
+        setNotes(prev => [...prev, n]);
+    };
+
+    const getNotesByBook = (bookId: string) => notes.filter(n => n.bookId === bookId).sort((a,b)=>b.date.localeCompare(a.date));
+
+    const exportNotesCSV = () => {
+        const headers = ['id','bookId','date','quote','text'];
+        const rows = notes.map(n => [n.id, n.bookId, n.date, JSON.stringify(n.quote||''), JSON.stringify(n.text||'')]);
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'notes.csv'; a.click();
+        URL.revokeObjectURL(url);
+    };
+
     const setReadingGoalBooksPerYear = (n?: number) => {
         setReadingGoal(prev => ({ ...prev, booksPerYear: n }));
     };
@@ -116,5 +143,9 @@ export function useLibrary() {
         avgPagesPerMinute,
         favoriteGenres,
         recommendBooks,
+        notes,
+        addNote,
+        getNotesByBook,
+        exportNotesCSV,
     };
 }
