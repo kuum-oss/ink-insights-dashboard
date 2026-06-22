@@ -48,57 +48,82 @@ export default function Dashboard() {
     }
 
     return (
-
-        <div className="min-h-screen bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
-            <AnalyticsSummary
-                booksRead={finishedBooks.length}
-                pagesPerDay={averagePagesPerDay}
-                sessions={sessions}
-            />
-
-            <PagesPerDayChart sessions={sessions} />
-
-            <div className="px-6 py-4">
-                <AddBookForm addBook={addBook} />
-
-                <button
-                    onClick={() => setView(v => (v === "active" ? "finished" : "active"))}
-                    aria-pressed={view === "finished"}
-                    className="mb-4 text-sm font-mono px-3 py-1 rounded-md bg-transparent hover:bg-zinc-200 dark:hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                >
-                    {view === "active" ? "Читаю сейчас" : "Прочитано"}
-                </button>
-
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={view}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.25 }}
-                    >
-                        <ProgressGrid books={view === "active" ? activeBooks : finishedBooks} onAddSession={addSession} onAddNote={addNote} getNotesByBook={getNotesByBook} exportNotes={exportNotesCSV} />
-                    </motion.div>
-                </AnimatePresence>
-            </div>
-
-            <Notifications items={getPriorityNotifications(60, 3)} />
-
-            <div className="px-6">
-                <div className="mt-4 mb-2 text-sm font-semibold">Рекомендации и прогнозы</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Recommendations recommendations={recommendBooks(4)} />
-                    <div className="rounded-md p-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-                        <div className="font-semibold">Быстрая статистика</div>
-                        <div className="mt-2 text-sm">
-                            <div>Средняя скорость: {avgPagesPerMinute > 0 ? avgPagesPerMinute.toFixed(2) : '—'} стр/мин</div>
-                            <div>Любимые жанры: {favoriteGenres.slice(0,3).join(', ') || '—'}</div>
-                        </div>
+        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                <header className="flex items-center justify-between mb-6">
+                    <div>
+                        <h1 className="text-3xl font-extrabold">Ink Insights</h1>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400">Отслеживайте прогресс чтения и заметки</p>
                     </div>
+                    <div className="flex items-center gap-3">
+                        <ThemeToggle />
+                    </div>
+                </header>
+
+                <AnalyticsSummary
+                    booksRead={finishedBooks.length}
+                    pagesPerDay={averagePagesPerDay}
+                    sessions={sessions}
+                />
+
+                <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <main className="lg:col-span-2">
+                        <PagesPerDayChart sessions={sessions} />
+
+                        <div className="mt-4">
+                            <AddBookForm addBook={addBook} />
+
+                            <div className="mb-3 flex items-center justify-between">
+                                <div className="text-sm font-semibold">{view === 'active' ? 'Читаю сейчас' : 'Прочитано'}</div>
+                                <button
+                                    onClick={() => setView(v => (v === "active" ? "finished" : "active"))}
+                                    aria-pressed={view === "finished"}
+                                    className="text-sm font-mono px-3 py-1 rounded-md bg-transparent hover:bg-zinc-200 dark:hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                >
+                                    {view === "active" ? "Переключить" : "Переключить"}
+                                </button>
+                            </div>
+
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={view}
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -8 }}
+                                    transition={{ duration: 0.25 }}
+                                >
+                                    <ProgressGrid books={view === "active" ? activeBooks : finishedBooks} onAddSession={addSession} onAddNote={addNote} getNotesByBook={getNotesByBook} exportNotes={exportNotesCSV} />
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+                    </main>
+
+                    <aside className="space-y-4">
+                        <div className="rounded-lg p-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm">
+                            <div className="font-semibold">Уведомления</div>
+                            <div className="mt-3">
+                                <Notifications items={getPriorityNotifications(60, 3)} />
+                            </div>
+                        </div>
+
+                        <div className="rounded-lg p-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm">
+                            <div className="font-semibold">Рекомендации</div>
+                            <div className="mt-3">
+                                <Recommendations recommendations={recommendBooks(4)} />
+                            </div>
+
+                            <div className="mt-4 text-sm">
+                                <div>Средняя скорость: {avgPagesPerMinute > 0 ? avgPagesPerMinute.toFixed(2) : '—'} стр/мин</div>
+                                <div>Любимые жанры: {favoriteGenres.slice(0,3).join(', ') || '—'}</div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+
+                <div className="mt-8">
+                    <ReadingHeatmap sessions={sessions} />
                 </div>
             </div>
-
-            <ReadingHeatmap sessions={sessions} />
         </div>
     );
 
