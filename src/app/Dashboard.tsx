@@ -9,6 +9,7 @@ import { ProgressGrid } from "@/components/books/ProgressGrid";
 import { ReadingHeatmap } from "@/components/heatmap/ReadingHeatmap";
 import { PagesPerDayChart } from "@/components/analytics/PagesPerDayChart";
 import { Recommendations } from "@/components/analytics/Recommendations";
+import { Notifications } from "@/components/Notifications";
 import { useTheme } from "@/theme/ThemeProvider";
 
 
@@ -19,6 +20,13 @@ export default function Dashboard() {
         sessions,
         averagePagesPerDay,
         addSession,
+        addNote,
+        getNotesByBook,
+        exportNotesCSV,
+        avgPagesPerMinute,
+        favoriteGenres,
+        recommendBooks,
+        getPriorityNotifications,
     } = useLibrary();
 
     const [view, setView] = useState<"active" | "finished">("active");
@@ -69,6 +77,8 @@ export default function Dashboard() {
                     </motion.div>
                 </AnimatePresence>
             </div>
+
+            <Notifications items={getPriorityNotifications(60, 3)} />
 
             <div className="px-6">
                 <div className="mt-4 mb-2 text-sm font-semibold">Рекомендации и прогнозы</div>

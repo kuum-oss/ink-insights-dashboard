@@ -69,16 +69,61 @@ export function useLibrary() {
         }
     }, [readingGoal, notes]);
 
-    // recommend books: score by (genre match + short remaining time)
+    // improved recommendations: combine multiple signals
     const recommendBooks = (count = 5) => {
+        // helper: days since last session for a book
+        const lastSessionByBook: Record<string, string | null> = {};
+        sessions.forEach(s => {
+            const prev = lastSessionByBook[s.bookId];
+            if (!prev || s.date > prev) lastSessionByBook[s.bookId] = s.date;
+        });
+
+        // compute raw scores
         const scored = books.map(b => {
             const remaining = Math.max(0, b.totalPages - b.currentPage);
-            const estMinutes = avgPagesPerMinute > 0 ? Math.ceil(remaining / avgPagesPerMinute) : Infinity;
+            const progressRatio = b.totalPages > 0 ? 1 - remaining / b.totalPages : 0; // closer to 1 means nearly finished
+
+            const estMinutes = avgPagesPerMinute > 0 ? remaining / avgPagesPerMinute : Infinity;
+
             const genreScore = favoriteGenres.includes(b.genre) ? 1 : 0;
-            const score = genreScore * 1000 - estMinutes; // higher better
+
+            // recency: if there was a recent session, boost (days since last session)
+            const last = lastSessionByBook[b.id];
+            let daysSince = 9999;
+            if (last) {
+                const d1 = new Date();
+                const d2 = new Date(last);
+                daysSince = Math.round((d1.getTime() - d2.getTime()) / (1000 * 60 * 60 * 24));
+            } else {
+                daysSince = 999;
+            }
+            const recencyScore = Math.max(0, 1 - Math.min(daysSince, 30) / 30); // 1 for today, 0 for 30+ days
+
+            // combine features with weights
+            const wGenre = 1.2;
+            const wProgress = 1.0;
+            const wRecency = 0.8;
+            const wSpeed = 0.6; // favors books that can be finished quickly
+
+            // normalize estMinutes to [0,1] by mapping (0..max)->(1..0)
+            const maxMinutes = 60 * 10; // 10 hours threshold
+            const speedScore = isFinite(estMinutes) ? Math.max(0, 1 - Math.min(estMinutes, maxMinutes) / maxMinutes) : 0;
+
+            const raw = wGenre * genreScore + wProgress * progressRatio + wRecency * recencyScore + wSpeed * speedScore;
+
+            // scale to 0..100
+            const score = Math.round(raw * 100);
+
             return { book: b, remaining, estMinutes, score };
         });
+
         return scored.sort((a, b) => b.score - a.score).slice(0, count);
+    };
+
+    // Notifications: return books with high priority score
+    const getPriorityNotifications = (minScore = 60, count = 3) => {
+        const recs = recommendBooks(20);
+        return recs.filter(r => r.score >= minScore).slice(0, count);
     };
 
     const averagePagesPerDay = useMemo(() => {
@@ -143,6 +188,7 @@ export function useLibrary() {
         avgPagesPerMinute,
         favoriteGenres,
         recommendBooks,
+        getPriorityNotifications,
         notes,
         addNote,
         getNotesByBook,
