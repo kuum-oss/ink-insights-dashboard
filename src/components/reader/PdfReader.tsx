@@ -22,6 +22,7 @@ interface Props { url: string; initialPage?: number }
 export default function PdfReader({ url, initialPage = 1 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const textLayerRef = useRef<HTMLDivElement | null>(null);
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [pageNum, setPageNum] = useState(initialPage);
   const [numPages, setNumPages] = useState(0);
@@ -48,6 +49,7 @@ export default function PdfReader({ url, initialPage = 1 }: Props) {
     return () => { mounted = false; };
   }, [url]);
 
+  // render page + text layer
   useEffect(() => {
     let cancelled = false;
     const renderPage = async (num: number) => {
@@ -63,85 +65,120 @@ export default function PdfReader({ url, initialPage = 1 }: Props) {
         canvas.width = viewport.width;
         const renderContext = { canvasContext: context as any, viewport };
         await page.render(renderContext).promise;
+
+        // build text layer
+        const textContent = await page.getTextContent({ disableCombineTextItems: false });
+        const textLayer = textLayerRef.current;
+        if (textLayer) {
+          textLayer.innerHTML = '';
+          textLayer.style.width = `${viewport.width}px`;
+          textLayer.style.height = `${viewport.height}px`;
+          // create spans
+          const canvasCtx = (canvas.getContext('2d') as CanvasRenderingContext2D);
+          const fontScale = viewport.scale;
+          for (let i = 0; i < textContent.items.length; i++) {
+            const item: any = textContent.items[i];
+            const tx = item.transform; // [a,b,c,d,e,f]
+            const x = tx[4];
+            const y = tx[5];
+            const viewportPoint = viewport.convertToViewportPoint(x, y);
+            const left = viewportPoint[0];
+            const top = viewport.height - viewportPoint[1];
+            // measure width using canvas measureText (approx)
+            const fontSize = Math.abs(tx[0]) * fontScale || 10;
+            canvasCtx.font = `${fontSize}px sans-serif`;
+            const measured = canvasCtx.measureText(item.str || '').width * fontScale;
+            const span = document.createElement('span');
+            span.textContent = item.str || '';
+            span.style.position = 'absolute';
+            span.style.left = `${left}px`;
+            span.style.top = `${top - fontSize}px`;
+            span.style.whiteSpace = 'pre';
+            span.style.fontSize = `${fontSize}px`;
+            span.style.lineHeight = '1';
+            span.style.pointerEvents = 'auto';
+            span.style.userSelect = 'text';
+            span.style.color = 'transparent';
+            span.style.textShadow = '0 0 0 black'; // keep text visible but selectable
+            span.dataset['textItemIndex'] = String(i);
+            span.dataset['page'] = String(num);
+            span.style.width = `${measured}px`;
+            textLayer.appendChild(span);
+          }
+
+          // after text layer built, if there's an active query and current page matches, compute highlights from spans
+          if (query.trim()) {
+            const spans = Array.from(textLayer.querySelectorAll('span')) as HTMLSpanElement[];
+            const foundRects: Match[] = [];
+            spans.forEach(sp => {
+              if (sp.textContent && sp.textContent.toLowerCase().includes(query.toLowerCase())) {
+                const r = sp.getBoundingClientRect();
+                // containerRef is scrollable; get position relative to container's content box
+                const containerRect = containerRef.current?.getBoundingClientRect();
+                const canvasRect = canvasRef.current?.getBoundingClientRect();
+                if (!containerRect || !canvasRect) return;
+                const left = sp.offsetLeft;
+                const top = sp.offsetTop;
+                foundRects.push({ page: num, x: left, y: top, width: sp.offsetWidth, height: sp.offsetHeight, str: sp.textContent || '' });
+              }
+            });
+            setMatches(foundRects);
+            if (foundRects.length > 0) {
+              setCurrentMatchIndex(0);
+            } else {
+              setCurrentMatchIndex(null);
+            }
+          } else {
+            setMatches([]);
+            setCurrentMatchIndex(null);
+          }
+        }
       } catch (e) {
         console.error('Render error', e);
       }
     };
     renderPage(pageNum);
     return () => { cancelled = true; };
-  }, [pdfDoc, pageNum, scale]);
+  }, [pdfDoc, pageNum, scale, query]);
 
-  // search across pages and build approximate highlight rects
+  // simplified search that navigates to pages with matches (keeps previous scanning fallback)
   async function runSearch(q: string) {
     if (!pdfDoc || !q.trim()) { setMatches([]); setCurrentMatchIndex(null); return; }
     setSearching(true);
     const lower = q.trim().toLowerCase();
-    const found: Match[] = [];
+    const pagesWithMatches: number[] = [];
     for (let p = 1; p <= pdfDoc.numPages; p++) {
       try {
         const page = await pdfDoc.getPage(p);
-        const viewport = page.getViewport({ scale: 1 });
         const txt = await page.getTextContent({ disableCombineTextItems: false });
-        for (const item of txt.items) {
-          const str: string = item.str || '';
-          const lstr = str.toLowerCase();
-          if (lstr.includes(lower)) {
-            // compute approximate position using transform
-            const tx = item.transform;
-            // tx: [a, b, c, d, e, f]
-            const x = tx[4];
-            const y = tx[5];
-            // approximate width and height
-            const width = (item.width || (str.length * 5)) * 1; // in text space
-            const height = Math.abs(tx[3] || 10);
-            // convert to viewport coordinates (scale later)
-            const [vx, vy] = viewport.convertToViewportPoint(x, y);
-            // viewport origin bottom-left — convert to top-left y
-            const rect = {
-              page: p,
-              x: vx,
-              y: viewport.height - vy,
-              width: width * viewport.scale,
-              height: height * viewport.scale,
-              str,
-            };
-            found.push(rect);
-          }
-        }
-      } catch (e) {
-        // ignore page errors
-      }
+        const joined = txt.items.map((it: any) => it.str || '').join(' ');
+        if (joined.toLowerCase().includes(lower)) pagesWithMatches.push(p);
+      } catch (e) {}
     }
-    setMatches(found);
     setSearching(false);
-    if (found.length > 0) {
-      setCurrentMatchIndex(0);
-      setPageNum(found[0].page);
-      // scroll container to approximate position after render
-      setTimeout(() => scrollToMatch(found[0]), 300);
+    if (pagesWithMatches.length > 0) {
+      setPageNum(pagesWithMatches[0]);
+      // textLayer will compute precise spans/highlights for that page
     } else {
+      setMatches([]);
       setCurrentMatchIndex(null);
     }
   }
 
   function scrollToMatch(m: Match) {
     const c = containerRef.current;
-    const canvas = canvasRef.current;
-    if (!c || !canvas) return;
-    // canvas is at (0,0) inside container; scroll so that box is visible
-    const rectTop = m.y;
-    const target = Math.max(0, rectTop - 100);
+    if (!c) return;
+    const target = Math.max(0, m.y - 100);
     c.scrollTo({ top: target, behavior: 'smooth' });
   }
 
-  // helpers to navigate matches
   function gotoNextMatch() {
     if (!matches.length) return;
     const idx = currentMatchIndex === null ? 0 : (currentMatchIndex + 1) % matches.length;
     setCurrentMatchIndex(idx);
     const m = matches[idx];
     setPageNum(m.page);
-    setTimeout(() => scrollToMatch(m), 300);
+    setTimeout(() => scrollToMatch(m), 200);
   }
   function gotoPrevMatch() {
     if (!matches.length) return;
@@ -149,7 +186,7 @@ export default function PdfReader({ url, initialPage = 1 }: Props) {
     setCurrentMatchIndex(idx);
     const m = matches[idx];
     setPageNum(m.page);
-    setTimeout(() => scrollToMatch(m), 300);
+    setTimeout(() => scrollToMatch(m), 200);
   }
 
   if (!url) return <div>Нет PDF</div>;
@@ -176,6 +213,7 @@ export default function PdfReader({ url, initialPage = 1 }: Props) {
 
       <div ref={containerRef} className="border rounded-lg overflow-auto relative" style={{ height: '70vh' }}>
         <canvas ref={canvasRef} />
+        <div ref={textLayerRef} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }} />
         {/* highlights overlay */}
         {matches.filter(m=>m.page === pageNum).map((m, idx) => (
           <div key={idx} style={{ position: 'absolute', left: m.x, top: m.y, width: m.width, height: m.height, background: (currentMatchIndex !== null && matches[currentMatchIndex] === m) ? 'rgba(250,215,50,0.4)' : 'rgba(255,255,0,0.25)', pointerEvents: 'none', mixBlendMode: 'multiply', borderRadius: 2 }} />
