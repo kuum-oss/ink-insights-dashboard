@@ -84,6 +84,77 @@ npm run dev
 - Убедитесь, что `data/` и `public/uploads` доступны для записи (DB и загруженные файлы).
 - Если TypeScript жалуется на нативные модули (better-sqlite3, pdfjs-dist), можно добавить простые декларации (`declare module '...'`) в `src/types`.
 
+### Локальная база данных (SQLite)
+
+Приложение использует SQLite (better-sqlite3). Файл БД:
+
+```
+data/books.db
+```
+
+Полезные команды для работы с локальной БД:
+
+- Показать таблицы:
+
+```bash
+sqlite3 data/books.db ".tables"
+```
+
+- Показать схему таблицы books:
+
+```bash
+sqlite3 data/books.db ".schema books"
+```
+
+- Просмотреть последние 20 сессий в человекочитаемом виде:
+
+```bash
+sqlite3 -header -column data/books.db "SELECT * FROM sessions ORDER BY date DESC LIMIT 20;"
+```
+
+- Экспорт таблицы в CSV:
+
+```bash
+sqlite3 -header -csv data/books.db "SELECT * FROM books;" > books.csv
+```
+
+Бэкап и восстановление
+
+- Безопасный бэкап (работает даже если сервер запущен):
+
+```bash
+sqlite3 data/books.db ".backup 'backups/books-$(date +%F).db'"
+```
+
+- Простое копирование (остановите dev-сервер перед копированием для консистентности):
+
+```bash
+mkdir -p backups && cp data/books.db backups/books-$(date +%F).db
+```
+
+- Экспорт в SQL-дамп:
+
+```bash
+sqlite3 data/books.db .dump > dump.sql
+```
+
+- Восстановление из дампа:
+
+```bash
+sqlite3 data/books.db < dump.sql
+```
+
+GUI и инструменты
+
+- DB Browser for SQLite (recommended) — удобно смотреть и править `data/books.db`.
+  macOS: `brew install --cask db-browser-for-sqlite`.
+
+Советы
+
+- При регулярной разработке используйте `.backup` для бэкапов, чтобы не прерывать dev-сервер.
+- Проверьте права на файл: `ls -lh data/books.db`.
+- Для регулярных бэкапов можно добавить npm-скрипт или cron-задание (в README показано, как вручную).
+
 ---
 
 ## Что можно улучшить дальше
@@ -106,5 +177,3 @@ npm run dev
 MIT
 
 ---
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
