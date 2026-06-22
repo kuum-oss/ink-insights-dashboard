@@ -122,7 +122,7 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
                         </div>
 
                         <div className="flex gap-2">
-                            <button onClick={() => setOpen(true)} className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-500">Читать</button>
+                            <a href={`/reader/${book.id}`} className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-500 inline-block">Читать</a>
                             <button onClick={async () => { if (onUpdateBook) await onUpdateBook(book.id, { progress: book.totalPages, read: true }); }} className="px-2 py-1 text-xs rounded-md bg-green-600 text-white hover:bg-green-500">Завершить</button>
                             <button onClick={async () => {
                                 const t = window.prompt('Новое название', book.title);
