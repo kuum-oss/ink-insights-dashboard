@@ -29,6 +29,9 @@ export default function Dashboard() {
         recommendBooks,
         getPriorityNotifications,
         addBook,
+    updateBook,
+    deleteBook,
+    seedDemo,
     } = useLibrary();
 
     const [view, setView] = useState<"active" | "finished">("active");
@@ -71,9 +74,12 @@ export default function Dashboard() {
                         <PagesPerDayChart sessions={sessions} />
 
                         <div className="mt-4">
-                            <AddBookForm addBook={addBook} />
+                            <div className="flex items-center gap-3">
+                                <AddBookForm addBook={addBook} />
+                                <button onClick={() => seedDemo?.()} className="px-3 py-1 rounded-md bg-yellow-100 text-sm">Demo mode</button>
+                            </div>
 
-                            <div className="mb-3 flex items-center justify-between">
+                            <div className="mb-3 flex items-center justify-between mt-3">
                                 <div className="text-sm font-semibold">{view === 'active' ? 'Читаю сейчас' : 'Прочитано'}</div>
                                 <button
                                     onClick={() => setView(v => (v === "active" ? "finished" : "active"))}
@@ -92,7 +98,7 @@ export default function Dashboard() {
                                     exit={{ opacity: 0, y: -8 }}
                                     transition={{ duration: 0.25 }}
                                 >
-                                    <ProgressGrid books={view === "active" ? activeBooks : finishedBooks} onAddSession={addSession} onAddNote={addNote} getNotesByBook={getNotesByBook} exportNotes={exportNotesCSV} />
+                                    <ProgressGrid books={view === "active" ? activeBooks : finishedBooks} onAddSession={addSession} onAddNote={addNote} getNotesByBook={getNotesByBook} exportNotes={exportNotesCSV} onUpdateBook={updateBook} onDeleteBook={deleteBook} />
                                 </motion.div>
                             </AnimatePresence>
                         </div>

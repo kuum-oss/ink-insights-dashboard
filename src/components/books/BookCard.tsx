@@ -9,9 +9,11 @@ interface Props {
     onAddNote?: (note: Omit<import("@/types/types").Note, 'id' | 'date'>) => void;
     getNotesByBook?: (bookId: string) => import("@/types/types").Note[];
     exportNotes?: () => void;
+    onUpdateBook?: (id: string, updates: Partial<{ title: string; author: string; description: string; read: boolean; progress: number; }>) => Promise<any> | void;
+    onDeleteBook?: (id: string) => Promise<any> | void;
 }
 
-export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, exportNotes }: Props) {
+export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, exportNotes, onUpdateBook, onDeleteBook }: Props) {
     const progress = Math.round(
         (book.currentPage / Math.max(1, book.totalPages)) * 100
     );
@@ -78,14 +80,39 @@ export function BookCard({ book, onAddSession, onAddNote, getNotesByBook, export
                         <div className="min-w-0">
                             <div className="text-sm font-semibold truncate">{book.title}</div>
                             <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{book.author || '—'}</div>
-                        </div>
-                        <div className="ml-3 text-xs text-zinc-600 dark:text-zinc-300">{progress}%</div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{Math.max(0, (book.totalPages || 0) - (book.currentPage || 0))} стр. · жанр: {book.genre || '—'}</div>
+                    </div>
+                    <div className="ml-3 text-xs text-zinc-600 dark:text-zinc-300">{progress}%</div>
                     </div>
 
                     <div className="mt-3">
-                        <div className="w-full h-2 rounded-full bg-zinc-100 dark:bg-zinc-700 overflow-hidden">
-                            <div className="h-2 bg-gradient-to-r from-indigo-500 via-indigo-400 to-indigo-300" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+                    <div className="w-full h-2 rounded-full bg-zinc-100 dark:bg-zinc-700 overflow-hidden">
+                        <div className="h-2 bg-gradient-to-r from-indigo-500 via-indigo-400 to-indigo-300 transition-all" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs">
+                            <div className="font-medium">⭐</div>
+                            <div className="opacity-70 text-sm">{book.totalPages ? Math.round((book.currentPage / Math.max(1, book.totalPages)) * 5) : '—'}/5</div>
+                            <div className="ml-2 text-zinc-500">{book.totalPages ? `${book.currentPage}/${book.totalPages} стр.` : '—'}</div>
                         </div>
+
+                        <div className="flex gap-2">
+                            <button onClick={() => setOpen(true)} className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-500">Читать</button>
+                            <button onClick={async () => { if (onUpdateBook) await onUpdateBook(book.id, { progress: book.totalPages, read: true }); }} className="px-2 py-1 text-xs rounded-md bg-green-600 text-white hover:bg-green-500">Завершить</button>
+                            <button onClick={async () => {
+                                const t = window.prompt('Новое название', book.title);
+                                const a = window.prompt('Автор', book.author || '');
+                                if (t !== null || a !== null) {
+                                    const updates: any = {};
+                                    if (t !== null) updates.title = t;
+                                    if (a !== null) updates.author = a;
+                                    await onUpdateBook?.(book.id, updates);
+                                }
+                            }} className="px-2 py-1 text-xs rounded-md border hover:bg-zinc-100">Редактировать</button>
+                            <button onClick={async () => { if (!confirm('Удалить книгу?')) return; await onDeleteBook?.(book.id); }} className="px-2 py-1 text-xs rounded-md border text-red-600 hover:bg-red-50">Удалить</button>
+                        </div>
+                    </div>
                     </div>
                 </div>
             </motion.div>

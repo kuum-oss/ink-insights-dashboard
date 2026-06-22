@@ -18,14 +18,7 @@ function mapServerBook(b: any): Book {
 export function useLibrary() {
     const [books, setBooks] = useState<Book[]>([]);
     const [sessions, setSessions] = useState<ReadingSession[]>([]);
-    const [notes, setNotes] = useState<Note[]>(() => {
-        try {
-            const raw = localStorage.getItem('notes');
-            return raw ? JSON.parse(raw) : [];
-        } catch (e) {
-            return [];
-        }
-    });
+    const [notes, setNotes] = useState<Note[]>([]);
 
     const [readingGoal, setReadingGoal] = useState<{ booksPerYear?: number }>(() => {
         try {
@@ -36,21 +29,36 @@ export function useLibrary() {
         }
     });
 
-    // load books from API on mount
+    // load books, sessions and notes from API on mount
     useEffect(() => {
         let mounted = true;
-        async function load() {
+        async function loadAll() {
             try {
-                const res = await fetch('/api/books');
-                if (!res.ok) return;
-                const data = await res.json();
-                if (!mounted) return;
-                setBooks(data.map(mapServerBook));
+                const [booksRes, sessionsRes, notesRes] = await Promise.all([
+                    fetch('/api/books'),
+                    fetch('/api/sessions'),
+                    fetch('/api/notes'),
+                ]);
+
+                if (booksRes.ok) {
+                    const data = await booksRes.json();
+                    if (mounted) setBooks(data.map(mapServerBook));
+                }
+
+                if (sessionsRes.ok) {
+                    const sdata = await sessionsRes.json();
+                    if (mounted) setSessions(sdata.map((s: any) => ({ bookId: String(s.bookId), date: s.date, pagesRead: Number(s.pagesRead), duration: Number(s.duration || 0) })));
+                }
+
+                if (notesRes.ok) {
+                    const ndata = await notesRes.json();
+                    if (mounted) setNotes(ndata.map((n: any) => ({ id: String(n.id), bookId: String(n.bookId), date: n.date, text: n.text, quote: n.quote })));
+                }
             } catch (e) {
                 // ignore
             }
         }
-        load();
+        loadAll();
         return () => { mounted = false; };
     }, []);
 
@@ -89,15 +97,14 @@ export function useLibrary() {
         return Object.entries(freq).sort((a, b) => b[1] - a[1]).map(([g]) => g);
     }, [books]);
 
-    // persist readingGoal & notes
+    // persist readingGoal
     useEffect(() => {
         try {
             localStorage.setItem('readingGoal', JSON.stringify(readingGoal));
-            localStorage.setItem('notes', JSON.stringify(notes));
         } catch (e) {
             // ignore
         }
-    }, [readingGoal, notes]);
+    }, [readingGoal]);
 
     const getRecSettings = () => {
         try {
@@ -167,20 +174,42 @@ export function useLibrary() {
         return finish.toISOString().split("T")[0];
     };
 
-    const addSession = (session: ReadingSession) => {
-        setSessions(prev => [...prev, session]);
-        setBooks(prev =>
-            prev.map(b =>
-                b.id === session.bookId
-                    ? { ...b, currentPage: b.currentPage + session.pagesRead }
-                    : b
-            )
-        );
+    const addSession = async (session: ReadingSession) => {
+        try {
+            const res = await fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(session) });
+            if (!res.ok) {
+                // fallback to local update
+                setSessions(prev => [...prev, session]);
+                setBooks(prev => prev.map(b => b.id === session.bookId ? { ...b, currentPage: b.currentPage + session.pagesRead } : b));
+                return;
+            }
+            const created = await res.json();
+            const s = { bookId: String(created.bookId), date: created.date, pagesRead: Number(created.pagesRead), duration: Number(created.duration || 0) } as ReadingSession;
+            setSessions(prev => [s, ...prev]);
+            setBooks(prev => prev.map(b => b.id === s.bookId ? { ...b, currentPage: b.currentPage + s.pagesRead } : b));
+        } catch (e) {
+            // network error, apply locally
+            setSessions(prev => [...prev, session]);
+            setBooks(prev => prev.map(b => b.id === session.bookId ? { ...b, currentPage: b.currentPage + session.pagesRead } : b));
+        }
     };
 
-    const addNote = (note: Omit<Note, 'id' | 'date'>) => {
-        const n = { id: String(Date.now()), date: new Date().toISOString(), ...note } as Note;
-        setNotes(prev => [...prev, n]);
+    const addNote = async (note: Omit<Note, 'id' | 'date'>) => {
+        try {
+            const payload = { ...note, date: new Date().toISOString() };
+            const res = await fetch('/api/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!res.ok) {
+                const n = { id: String(Date.now()), date: payload.date, ...note } as Note;
+                setNotes(prev => [...prev, n]);
+                return;
+            }
+            const created = await res.json();
+            const n = { id: String(created.id), bookId: String(created.bookId), date: created.date, text: created.text, quote: created.quote } as Note;
+            setNotes(prev => [n, ...prev]);
+        } catch (e) {
+            const n = { id: String(Date.now()), date: new Date().toISOString(), ...note } as Note;
+            setNotes(prev => [...prev, n]);
+        }
     };
 
     const getNotesByBook = (bookId: string) => notes.filter(n => n.bookId === bookId).sort((a,b)=>b.date.localeCompare(a.date));
@@ -229,6 +258,33 @@ export function useLibrary() {
         setReadingGoal(prev => ({ ...prev, booksPerYear: n }));
     };
 
+    const seedDemo = async () => {
+        try {
+            // sample books
+            const demo = [
+                { title: '1984', author: 'George Orwell', totalPages: 328 },
+                { title: 'The Hobbit', author: 'J.R.R. Tolkien', totalPages: 310 },
+                { title: 'Test Book from CLI', author: 'Demo', totalPages: 120 },
+            ];
+            for (const b of demo) {
+                await addBook(b);
+            }
+            // add some sessions for the first book
+            const allBooks = await fetch('/api/books').then(r => r.json());
+            if (allBooks && allBooks.length) {
+                const first = allBooks[0];
+                await fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookId: first.id, date: new Date().toISOString(), pagesRead: 25, duration: 30 }) });
+            }
+            // refetch
+            const bres = await fetch('/api/books');
+            if (bres.ok) setBooks((await bres.json()).map(mapServerBook));
+            const sres = await fetch('/api/sessions');
+            if (sres.ok) setSessions((await sres.json()).map((s: any) => ({ bookId: String(s.bookId), date: s.date, pagesRead: Number(s.pagesRead), duration: Number(s.duration || 0) })));
+        } catch (e) {
+            // ignore
+        }
+    };
+
     return {
         books,
         activeBooks,
@@ -252,5 +308,6 @@ export function useLibrary() {
         addBook,
         updateBook,
         deleteBook,
+        seedDemo,
     };
 }

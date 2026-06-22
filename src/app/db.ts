@@ -30,6 +30,28 @@ try {
   if (!cols.find((c: any) => c.name === 'totalPages')) {
     db.exec("ALTER TABLE books ADD COLUMN totalPages INTEGER DEFAULT 0;");
   }
+
+  // create sessions table to persist reading sessions
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      bookId INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      pagesRead INTEGER NOT NULL,
+      duration INTEGER DEFAULT 0
+    );
+  `);
+
+  // create notes table for user notes and quotes
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      bookId INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      quote TEXT,
+      text TEXT
+    );
+  `);
 } catch (e) {
   // ignore
 }
