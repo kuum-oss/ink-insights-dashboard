@@ -3,6 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLibrary } from '@/hooks/useLibrary';
+import dynamic from 'next/dynamic';
+
+const PdfReader = dynamic(() => import('@/components/reader/PdfReader'), { ssr: false });
+const EpubReader = dynamic(() => import('@/components/reader/EpubReader'), { ssr: false });
 
 export default function ReaderPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -40,6 +44,7 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
 
   const isPDF = !!book.contentUrl && book.contentUrl.endsWith('.pdf');
   const isTXT = !!book.contentUrl && book.contentUrl.endsWith('.txt');
+  const isEPUB = !!book.contentUrl && book.contentUrl.endsWith('.epub');
 
   // text pagination: derive pages count
   const computedPages = React.useMemo(() => {
@@ -80,7 +85,12 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
           <div className="mt-6">
             {isPDF ? (
               <div className="h-[70vh]">
-                <embed src={book.contentUrl} type="application/pdf" width="100%" height="100%" />
+                {/* better UX: use PdfReader component */}
+                <PdfReader url={book.contentUrl as string} initialPage={currentPage || 1} />
+              </div>
+            ) : isEPUB ? (
+              <div>
+                <EpubReader url={book.contentUrl as string} />
               </div>
             ) : isTXT ? (
               <>

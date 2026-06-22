@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
+    "epubjs": "^0.3.93",
     "formidable": "^3.5.4",
     "framer-motion": "^12.40.0",
     "next": "16.2.9",
+    "pdfjs-dist": "^6.0.227",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
