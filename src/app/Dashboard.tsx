@@ -18,6 +18,8 @@ export default function Dashboard() {
         sessions,
         averagePagesPerDay,
         addSession,
+        readingGoal,
+        setReadingGoalBooksPerYear,
     } = useLibrary();
 
     const [view, setView] = useState<"active" | "finished">("active");
@@ -43,6 +45,8 @@ export default function Dashboard() {
                 booksRead={finishedBooks.length}
                 pagesPerDay={averagePagesPerDay}
                 sessions={sessions}
+                readingGoal={readingGoal}
+                setReadingGoal={setReadingGoalBooksPerYear}
             />
 
             <PagesPerDayChart sessions={sessions} />

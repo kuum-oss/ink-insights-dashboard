@@ -1,16 +1,21 @@
 import { ReadingSession } from "@/types/types";
 import { MetricCard } from "@/components/ui/MetricCard";
+import { ReadingGoalControl } from "@/components/analytics/ReadingGoalControl";
 
 interface Props {
     booksRead: number;
     pagesPerDay: number;
     sessions: ReadingSession[];
+    readingGoal?: { booksPerYear?: number };
+    setReadingGoal?: (n?: number) => void;
 }
 
 export function AnalyticsSummary({
                                      booksRead,
                                      pagesPerDay,
                                      sessions,
+                                     readingGoal,
+                                     setReadingGoal,
                                  }: Props) {
     const currentStreak = calculateStreak(sessions);
 
@@ -19,6 +24,11 @@ export function AnalyticsSummary({
             <MetricCard label="Книг за год" value={booksRead} />
             <MetricCard label="Страниц в день" value={pagesPerDay} />
             <MetricCard label="Текущий стрик (дни)" value={currentStreak} />
+
+            {/* Reading goal control spans full width on small screens */}
+            <div className="md:col-span-3">
+                <ReadingGoalControl booksRead={booksRead} readingGoal={readingGoal} setGoal={setReadingGoal ?? (() => {})} />
+            </div>
         </div>
     );
 }

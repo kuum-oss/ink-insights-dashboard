@@ -7,6 +7,15 @@ export function useLibrary() {
     const [books, setBooks] = useState<Book[]>([]);
     const [sessions, setSessions] = useState<ReadingSession[]>([]);
 
+    const [readingGoal, setReadingGoal] = useState<{ booksPerYear?: number }>(() => {
+        try {
+            const raw = localStorage.getItem('readingGoal');
+            return raw ? JSON.parse(raw) : {};
+        } catch (e) {
+            return {};
+        }
+    });
+
     const activeBooks = useMemo(
         () => books.filter(b => b.currentPage < b.totalPages),
         [books]
@@ -21,6 +30,18 @@ export function useLibrary() {
         () => sessions.reduce((sum, s) => sum + s.pagesRead, 0),
         [sessions]
     );
+
+    // books read count
+    const booksRead = useMemo(() => finishedBooks.length, [finishedBooks]);
+
+    // persist readingGoal
+    useEffect(() => {
+        try {
+            localStorage.setItem('readingGoal', JSON.stringify(readingGoal));
+        } catch (e) {
+            // ignore
+        }
+    }, [readingGoal]);
 
     const averagePagesPerDay = useMemo(() => {
         if (sessions.length === 0) return 0;
@@ -48,6 +69,10 @@ export function useLibrary() {
         );
     };
 
+    const setReadingGoalBooksPerYear = (n?: number) => {
+        setReadingGoal(prev => ({ ...prev, booksPerYear: n }));
+    };
+
     return {
         books,
         activeBooks,
@@ -56,5 +81,8 @@ export function useLibrary() {
         averagePagesPerDay,
         estimatedFinishDate,
         addSession,
+        readingGoal,
+        setReadingGoalBooksPerYear,
+        booksRead,
     };
 }
